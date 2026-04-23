@@ -110,6 +110,7 @@ El usuario:
 - Puede auditar **por qué una señal fue generada**
 
 El sistema **asiste**, no sustituye.
+``
 
 ---
 
@@ -231,14 +232,13 @@ La ausencia de este estándar bloquea el cierre de tickets.
 La plataforma deberá ser funcional y operativa como mínimo con los siguientes brokers:
 - **Interactive Brokers (IBKR)** — broker primario profesional
 - **Alpaca** — broker secundario / paper trading
-
+- 
 Ambos deberán soportar:
 
-- Conectividad
-- Market data
-- Sincronización de portafolio
-- Preparación de órdenes asistidas
-
+Conectividad
+Market data
+Sincronización de portafolio
+Preparación de órdenes asistidas
 ---
 
 ### 11.2 Arquitectura Estándar de Brokers
@@ -251,10 +251,10 @@ El sistema deberá implementar una arquitectura de brokers estandarizada, que pe
 
 Ejemplos de brokers futuros soportables:
 
-- Tradier
-- TD Ameritrade / Schwab
-- NinjaTrader
-- Brokers crypto (en specs futuras)
+Tradier
+TD Ameritrade / Schwab
+NinjaTrader
+Brokers crypto (en specs futuras)
 
 La lógica de trading no puede acoplarse a un broker específico.
 
@@ -298,6 +298,7 @@ El flujo operativo de agentes es **obligatorio e inmutable**:
 - **Krilin**: gestor de bases de datos y servicios REST API 
 - **Bulma**: validación y testing
 - **Dr.FIC.**: aprovación y validación humana explícita
+
 
 Violaciones a este flujo **bloquean el avance del trabajo**.
 Cualquier violación a:
@@ -369,7 +370,5 @@ Toda SPEC, ticket, agente, skill o línea de código deberá:
 **Estado**: ✅ Activa  
 **Rol**: Fuente de verdad primaria  
 **Framework**: Spec‑Driven Development (SpecKit / OpenSpec)
-**Última Enmienda**: 2026-04-22
 
-
-
+---
