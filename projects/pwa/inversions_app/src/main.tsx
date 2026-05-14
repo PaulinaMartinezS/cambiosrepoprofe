@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { SignalEvaluationPage } from "./features/signals/SignalEvaluationPage";
+import { MainDashboard } from "./features/dashboard/MainDashboard";
 
 const rootElement = document.getElementById("root");
 
@@ -10,6 +10,6 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <React.StrictMode>
-    <SignalEvaluationPage />
+    <MainDashboard />
   </React.StrictMode>
 );

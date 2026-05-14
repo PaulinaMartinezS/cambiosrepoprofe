@@ -145,6 +145,26 @@ const ENVIRONMENT_REQUIREMENTS: EnvironmentRequirement[] = [
   },
 ];
 
+const ENVIRONMENT_ALIASES: Record<string, string[]> = {
+  SUPABASE_URL: ["VITE_SUPABASE_URL"],
+  SUPABASE_SERVICE_KEY: ["SUPABASE_SERVICE_ROLE_KEY"],
+};
+
+function resolveEnvironmentValue(variableName: string): string | undefined {
+  if (process.env[variableName]) {
+    return process.env[variableName];
+  }
+
+  const aliases = ENVIRONMENT_ALIASES[variableName] || [];
+  for (const alias of aliases) {
+    if (process.env[alias]) {
+      return process.env[alias];
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * FIC: Validation result with details about which variables passed/failed.
  * FIC: Resultado de validación con detalles sobre qué variables pasaron/fallaron.
@@ -177,13 +197,16 @@ export function validateEnvironment(): ValidationResult {
 
   // FIC: Check each requirement
   for (const requirement of ENVIRONMENT_REQUIREMENTS) {
-    const value = process.env[requirement.name];
+    const value = resolveEnvironmentValue(requirement.name);
 
     // FIC: Check if required variable is missing
     if (requirement.required && !value) {
+      const aliasHint = (ENVIRONMENT_ALIASES[requirement.name] || []).length
+        ? ` Also accepted aliases: ${(ENVIRONMENT_ALIASES[requirement.name] || []).join(", ")}. Alias aceptados: ${(ENVIRONMENT_ALIASES[requirement.name] || []).join(", ")}.`
+        : "";
       errors.push({
         variable: requirement.name,
-        reason: `Required environment variable is missing. Variable de entorno requerida falta. (${requirement.description})`,
+        reason: `Required environment variable is missing. Variable de entorno requerida falta. (${requirement.description})${aliasHint}`,
       });
       continue;
     }

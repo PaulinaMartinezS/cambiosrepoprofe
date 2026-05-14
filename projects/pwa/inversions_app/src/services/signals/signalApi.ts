@@ -31,6 +31,30 @@ export interface SignalDetailsResponse {
   evidence: SourceVerdict[];
 }
 
+export interface DashboardSignalCard {
+  signalId: string;
+  instrument: string;
+  signal: SignalDirection;
+  confidence: number;
+  confluenceScore: number;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  activeCores: string[];
+  updatedAt: string;
+  evidence: SourceVerdict[];
+}
+
+export interface DashboardOrchestratorResponse {
+  timeframe: string;
+  generatedAt: string;
+  instruments: string[];
+  cards: DashboardSignalCard[];
+}
+
+export interface DashboardQueryParams {
+  instruments: string;
+  timeframe: string;
+}
+
 const API_BASE = "/api/signals";
 
 function buildAuthHeaders(): Record<string, string> {
@@ -76,4 +100,30 @@ export async function getSignalDetails(signalId: string): Promise<SignalDetailsR
   }
 
   return (await response.json()) as SignalDetailsResponse;
+}
+
+/**
+ * FIC: Fetch dashboard orchestrator payload with instrument/timeframe filters.
+ *
+ * FIC: Obtiene payload del orquestador del dashboard con filtros de instrumento/timeframe.
+ */
+export async function getDashboardOrchestrator(
+  params: DashboardQueryParams
+): Promise<DashboardOrchestratorResponse> {
+  const query = new URLSearchParams({
+    instruments: params.instruments,
+    timeframe: params.timeframe
+  }).toString();
+
+  const response = await fetch(`/api/dashboard/orchestrator?${query}`, {
+    headers: {
+      ...buildAuthHeaders()
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error al consultar dashboard orquestador: ${response.status}`);
+  }
+
+  return (await response.json()) as DashboardOrchestratorResponse;
 }

@@ -8,19 +8,23 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 // FIC: Validate required environment variables at module load time
 // FIC: Validar variables de entorno requeridas en tiempo de carga del módulo
-if (!process.env.SUPABASE_URL) {
+if (!supabaseUrl) {
   throw new Error(
-    "SUPABASE_URL environment variable is required. " +
-    "SUPABASE_URL es una variable de entorno requerida."
+    "SUPABASE_URL environment variable is required (VITE_SUPABASE_URL is accepted as alias). " +
+    "SUPABASE_URL es una variable de entorno requerida (VITE_SUPABASE_URL se acepta como alias)."
   );
 }
 
-if (!process.env.SUPABASE_SERVICE_KEY) {
+if (!supabaseServiceKey) {
   throw new Error(
-    "SUPABASE_SERVICE_KEY environment variable is required for server-side operations. " +
-    "SUPABASE_SERVICE_KEY es una variable de entorno requerida para operaciones del lado del servidor."
+    "SUPABASE_SERVICE_KEY environment variable is required for server-side operations (SUPABASE_SERVICE_ROLE_KEY is accepted as alias). " +
+    "SUPABASE_SERVICE_KEY es una variable de entorno requerida para operaciones del lado del servidor (SUPABASE_SERVICE_ROLE_KEY se acepta como alias)."
   );
 }
 
@@ -42,8 +46,8 @@ if (!process.env.SUPABASE_SERVICE_KEY) {
  * y debe respetar políticas RLS al insertar/actualizar registros de auditoría y datos de usuario.
  */
 export const supabaseClient = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
+  supabaseUrl,
+  supabaseServiceKey,
   {
     auth: {
       // FIC: Disable auto-refresh for service role operations
@@ -62,7 +66,7 @@ export const supabaseClient = createClient(
  * Se utiliza para aplicar políticas RLS con los claims de un usuario específico.
  */
 export function createAuthenticatedClient(token: string) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!, {
+  return createClient(supabaseUrl!, supabaseServiceKey!, {
     global: {
       headers: {
         Authorization: `Bearer ${token}`,

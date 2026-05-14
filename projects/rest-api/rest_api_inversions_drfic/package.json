@@ -9,6 +9,7 @@
     "test": "node -e \"console.log('backend tests pending')\""
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.4",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2"
   },
@@ -20,5 +21,3 @@
     "typescript": "^5.6.2"
   }
 }
-
-

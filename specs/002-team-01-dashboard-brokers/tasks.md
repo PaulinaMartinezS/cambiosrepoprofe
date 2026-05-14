@@ -66,6 +66,9 @@
 | T047 (test SLA observabilidad) | T036 |
 | T048 (migración context_snapshot) | T061 |
 | T049 (validación FIC: comments) | T057 |
+| T050 (normalización credenciales .env) | T059 |
+| T051 (migración canónica final de esquema) | T061 |
+| T052 (rollback de migración canónica) | T062 |
 
 ## Phase 1: Setup (Shared Infrastructure)
 
@@ -105,14 +108,14 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Crear dashboard principal con filtros de instrumento/tiempo en `projects/pwa/inversions_app/src/features/dashboard/MainDashboard.tsx`
-- [ ] T013 [P] [US1] Implementar selector de cores activables en `projects/pwa/inversions_app/src/features/dashboard/CoreSelector.tsx`
-- [ ] T014 [P] [US1] Implementar overlay de senales por core y confluencia en `projects/pwa/inversions_app/src/features/dashboard/SignalOverlay.tsx`
-- [ ] T015 [P] [US1] Implementar tabla de explicabilidad con score/confidence/source en `projects/pwa/inversions_app/src/features/dashboard/ExplainabilityTable.tsx`
-- [ ] T016 [US1] Construir endpoint orquestador de vista consolidada en `projects/rest-api/rest_api_inversions_drfic/src/routes/dashboard/orchestrator.ts`
-- [ ] T017 [US1] Integrar servicio de confluencia para payload del tablero en `projects/rest-api/rest_api_inversions_drfic/src/modules/signals/confluenceEngine.ts`
-- [ ] T018 [US1] Integrar consumo frontend del orquestador en `projects/pwa/inversions_app/src/services/signals/signalApi.ts`
-- [ ] T019 [US1] Reforzar visualizacion de evidencia de recomendacion en `projects/pwa/inversions_app/src/features/signals/SignalEvidencePanel.tsx`
+- [X] T012 [P] [US1] Crear dashboard principal con filtros de instrumento/tiempo en `projects/pwa/inversions_app/src/features/dashboard/MainDashboard.tsx`
+- [X] T013 [P] [US1] Implementar selector de cores activables en `projects/pwa/inversions_app/src/features/dashboard/CoreSelector.tsx`
+- [X] T014 [P] [US1] Implementar overlay de senales por core y confluencia en `projects/pwa/inversions_app/src/features/dashboard/SignalOverlay.tsx`
+- [X] T015 [P] [US1] Implementar tabla de explicabilidad con score/confidence/source en `projects/pwa/inversions_app/src/features/dashboard/ExplainabilityTable.tsx`
+- [X] T016 [US1] Construir endpoint orquestador de vista consolidada en `projects/rest-api/rest_api_inversions_drfic/src/routes/dashboard/orchestrator.ts`
+- [X] T017 [US1] Integrar servicio de confluencia para payload del tablero en `projects/rest-api/rest_api_inversions_drfic/src/modules/signals/confluenceEngine.ts`
+- [X] T018 [US1] Integrar consumo frontend del orquestador en `projects/pwa/inversions_app/src/services/signals/signalApi.ts`
+- [X] T019 [US1] Reforzar visualizacion de evidencia de recomendacion en `projects/pwa/inversions_app/src/features/signals/SignalEvidencePanel.tsx`
 
 **Checkpoint**: US1 funcional y validable de forma independiente.
 
@@ -187,6 +190,9 @@
 - [ ] T047 [P] Test de integracion de SLA de observabilidad: verificar que `decision_latency_ms`, `decision_conflict_count` y `broker_sync_lag_ms` se actualizan en el tablero en ciclos de maximo 60 segundos en `projects/rest-api/rest_api_inversions_drfic/tests/integration/observability/availabilitySlo.test.ts`
 - [ ] T048 Agregar campo `context_snapshot` (JSON serializado de inputs de decision) a `SenalConfluente` en migracion `projects/rest-api/rest_api_inversions_drfic/src/database/supabase/migrations/002_context_snapshot.sql` para soportar reconstruccion de decisiones pasadas (FR-009)
 - [ ] T049 Validar cobertura de comentarios `FIC:` bilingues en archivos nuevos de la feature mediante revision de checklist en `specs/002-team-01-dashboard-brokers/checklists/requirements.md` antes del cierre de cada tarea (FR-018)
+- [X] T050 [P] Normalizar credenciales y aliases de Supabase en runtime backend, y definir plantilla operativa en `projects/rest-api/rest_api_inversions_drfic/.env.example` para separar llaves backend/frontend sin exponer secretos
+- [X] T051 Ejecutar migracion de reemplazo de esquema legado (BD vacia) a modelo canónico multi-equipo en `projects/rest-api/rest_api_inversions_drfic/src/database/supabase/migrations/003_canonical_schema.sql`, eliminando tablas legacy y creando tablas definitivas para señales, decisiones, ejecuciones, auditoría, estrategias y riesgo
+- [ ] T052 [P] Crear rollback de consolidacion canónica en `projects/rest-api/rest_api_inversions_drfic/src/database/supabase/migrations/003_canonical_schema.rollback.sql` con guardas de seguridad para evitar borrado accidental en ambientes con datos
 
 ---
 

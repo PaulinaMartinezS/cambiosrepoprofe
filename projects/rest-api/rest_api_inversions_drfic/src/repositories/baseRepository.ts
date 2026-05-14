@@ -155,7 +155,7 @@ export abstract class BaseRepository<T> {
     try {
       const { data, error } = await this.client
         .from(this.tableName)
-        .insert([record])
+        .insert([record] as any)
         .select()
         .single();
 
@@ -179,7 +179,7 @@ export abstract class BaseRepository<T> {
     try {
       const { data, error } = await this.client
         .from(this.tableName)
-        .update(partial)
+        .update(partial as any)
         .eq("id", id)
         .select()
         .single();

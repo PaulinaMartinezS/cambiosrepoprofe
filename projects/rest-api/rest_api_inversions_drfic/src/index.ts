@@ -8,6 +8,7 @@ import { ApprovalService } from "./modules/execution/approvalService";
 import { ExecutionService } from "./modules/execution/executionService";
 import { signalDetailsRouter } from "./routes/signals/details";
 import { signalEvaluateRouter } from "./routes/signals/evaluate";
+import { dashboardOrchestratorRouter } from "./routes/dashboard/orchestrator";
 
 const app = express();
 app.use(express.json());
@@ -18,6 +19,7 @@ const executionService = new ExecutionService();
 
 app.use("/api/signals", signalEvaluateRouter);
 app.use("/api/signals", signalDetailsRouter);
+app.use("/api/dashboard", dashboardOrchestratorRouter);
 app.use("/api/execution", createApprovalRouter(approvalService));
 app.use("/api/execution", createExecutionRouter(executionService));
 app.use("/api/audit", createAuditHistoryRouter(auditHistoryService));

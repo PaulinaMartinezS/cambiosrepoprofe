@@ -110,6 +110,10 @@ export function initializeEnvironment(): EnvironmentConfig {
     | "staging"
     | "test";
 
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
   // FIC: Build configuration object
   const config: EnvironmentConfig = {
     // Node environment
@@ -123,8 +127,8 @@ export function initializeEnvironment(): EnvironmentConfig {
 
     // Supabase
     supabase: {
-      url: process.env.SUPABASE_URL!,
-      serviceKey: process.env.SUPABASE_SERVICE_KEY!,
+      url: supabaseUrl!,
+      serviceKey: supabaseServiceKey!,
     },
 
     // JWT
