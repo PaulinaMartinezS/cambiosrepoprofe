@@ -2,6 +2,8 @@
 // FIC: Dashboard operativo principal — layout AppShell de 4 zonas con ActivityBar, LeftPanel y ChatPanel.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MessageSquare } from "lucide-react";
+import { GlobalChatDrawer } from "../../pages/ai/GlobalChatDrawer";
 import { SuperChart } from "./SuperChart";
 import { TimeControls } from "./TimeControls";
 import { IndicatorsMenu } from "./IndicatorsMenu";
@@ -25,8 +27,10 @@ export function MainDashboard() {
   const [periodRange, setPeriodRange] = useState<{ startDate: Date; endDate: Date } | null>(null);
   const [simulationRows, setSimulationRows] = useState<ConfluenceSignalRow[] | undefined>(undefined);
   const [simulationVerdict, setSimulationVerdict] = useState<{ verdict?: unknown; score?: number; degraded?: boolean } | null>(null);
+  const [activeSimulationStrategy, setActiveSimulationStrategy] = useState("IRON_CONDOR");
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
   const [instModalTicker, setInstModalTicker] = useState<string | null>(null);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   const { selectedInstrument, runtimeMode, operationalMode } = useSignalStore();
   const { } = useAppShellStore();
@@ -146,6 +150,7 @@ export function MainDashboard() {
         ticket={selectedSymbol}
         onResult={handleSimulationResult}
         onExecute={handleSimulationExecute}
+        onStrategyChange={setActiveSimulationStrategy}
       />
 
       {/* ── Simulation verdict */}
@@ -170,7 +175,7 @@ export function MainDashboard() {
           </p>
         </section>
       ) : (
-        <ConfluenceSignalsTable symbol={selectedSymbol} rows={simulationRows} />
+        <ConfluenceSignalsTable symbol={selectedSymbol} rows={simulationRows} activeStrategy={activeSimulationStrategy} />
       )}
 
       {/* ── Institutional analysis section */}
@@ -278,6 +283,41 @@ export function MainDashboard() {
         data={instModalTicker ? (institutionalResults[instModalTicker.toUpperCase()] ?? null) : null}
         onClose={() => setInstModalTicker(null)}
       />
+
+      {/* FAB — Copilot IA */}
+      <button
+        onClick={() => setCopilotOpen(true)}
+        title="Abrir Copilot IA"
+        style={{
+          position: "fixed",
+          bottom: "1.5rem",
+          right: "1.5rem",
+          width: "56px",
+          height: "56px",
+          borderRadius: "50%",
+          background: "var(--color-accent)",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 16px rgba(73, 79, 223, 0.5)",
+          zIndex: 900,
+          transition: "transform 0.2s ease, box-shadow 0.2s ease"
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.08)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 20px rgba(73, 79, 223, 0.7)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 16px rgba(73, 79, 223, 0.5)";
+        }}
+      >
+        <MessageSquare size={24} color="#ffffff" />
+      </button>
+
+      <GlobalChatDrawer isOpen={copilotOpen} onClose={() => setCopilotOpen(false)} />
     </>
   );
 }

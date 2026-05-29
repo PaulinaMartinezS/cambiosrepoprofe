@@ -35,6 +35,7 @@ import { indicatorsRateLimit, chatRateLimit } from "./middleware/indicatorsRateL
 import { institutionalAnalysisRouter } from "./routes/institutional/institutionalAnalysis";
 import { regulatoryPositionsRouter } from "./routes/institutional/regulatoryPositions";
 import { institutionalCopilotRouter } from "./routes/ai/institutionalCopilot";
+import volatilityAnalysisRouter from "./routes/ai/volatilityAnalysis";
 import { coverageAnalyzeRouter } from "./routes/coverage/analyze";
 import { coverageCompareRouter } from "./routes/coverage/compare";
 import { coverageSimulateRouter } from "./routes/coverage/simulate";
@@ -87,6 +88,7 @@ app.use("/api/chat", chatRateLimit, chatExplainRouter);
 app.use("/api/institutional", institutionalAnalysisRouter);
 app.use("/api/institutional", regulatoryPositionsRouter);
 app.use("/api/ai", institutionalCopilotRouter);
+app.use("/api/ai/volatility", volatilityAnalysisRouter);
 app.use("/api/coverage", coverageAnalyzeRouter);
 app.use("/api/coverage", coverageCompareRouter);
 app.use("/api/coverage", coverageSimulateRouter);

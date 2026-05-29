@@ -151,6 +151,16 @@ export function buildInstitutionalAnalysisContractFromRequest(
   });
 }
 
+// FIC: Build a contract from ticker alone — used by the simulation runner (no Express Request). (EN)
+// FIC: Construye un contrato desde solo el ticker — usado por el runner de simulación (sin Express Request). (ES)
+export function buildInstitutionalContractForSimulation(
+  ticker: string
+): InstitutionalAnalysisContract {
+  return buildInstitutionalAnalysisContractFromRequest({
+    query: { ticker, period: "daily", horizon: "medium" }
+  } as any);
+}
+
 // ─── Summary builders ─────────────────────────────────────────────────────────
 
 // FIC: Build a compact trend summary object for embedding in API responses. (EN)
