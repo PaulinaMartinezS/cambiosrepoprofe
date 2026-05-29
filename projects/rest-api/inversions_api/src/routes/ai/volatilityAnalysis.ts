@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
-import { mockDb } from '../../modules/volatility/mockDb.js';
-import { GeminiAgentService } from '../../modules/agents/geminiAgentService.js';
+import { mockDb } from '../../modules/volatility/mockDb';
+import { GeminiAgentService } from '../../modules/agents/geminiAgentService';
 import {
   assessVolatility,
   buildLocalFallbackNarrative,
@@ -8,7 +8,7 @@ import {
   parseGeminiDecision,
   VolatilityCircuitBreaker,
   type VolatilityAssessment,
-} from '../../modules/volatility/analysisEngine.js';
+} from '../../modules/volatility/analysisEngine';
 
 const router = Router();
 const volatilityCircuitBreaker = new VolatilityCircuitBreaker({
