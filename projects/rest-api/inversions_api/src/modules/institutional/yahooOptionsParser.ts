@@ -254,3 +254,150 @@ export const parseYahooOptionsFlow: ParseFn = async (ticker, _period, fetchImpl)
     return chartFallbackResult ?? optionsFallback(ticker);
   }
 };
+
+// ─── Option Chain Extensions ───────────────────────────────────────────────────
+// FIC: Extended option contract — includes pricing and IV fields discarded by flow parser. (EN)
+// FIC: Contrato de opción extendido — incluye campos de precio e IV descartados por el parser de flujo. (ES)
+
+export interface YahooFullOptionContract {
+  contractSymbol: string;
+  strike: number;
+  bid: number;
+  ask: number;
+  lastPrice: number;
+  impliedVolatility: number;
+  volume: number;
+  openInterest: number;
+  inTheMoney: boolean;
+}
+
+export interface YahooOptionChainData {
+  calls: YahooFullOptionContract[];
+  puts: YahooFullOptionContract[];
+  underlyingPrice: number;
+  expirationDates: number[];  // unix timestamps (seconds)
+}
+
+// FIC: Map raw Yahoo option object to YahooFullOptionContract with safe defaults. (EN)
+// FIC: Mapea objeto de opción crudo de Yahoo a YahooFullOptionContract con defaults seguros. (ES)
+function mapYahooContract(raw: Record<string, unknown>): YahooFullOptionContract {
+  return {
+    contractSymbol: String(raw.contractSymbol ?? ""),
+    strike:            Number(raw.strike           ?? 0),
+    bid:               Number(raw.bid              ?? 0),
+    ask:               Number(raw.ask              ?? 0),
+    lastPrice:         Number(raw.lastPrice        ?? 0),
+    impliedVolatility: Number(raw.impliedVolatility ?? 0),
+    volume:            Number(raw.volume           ?? 0),
+    openInterest:      Number(raw.openInterest     ?? 0),
+    inTheMoney:        Boolean(raw.inTheMoney),
+  };
+}
+
+// FIC: Fetch full option chain for a specific expiration from Yahoo Finance v7. (EN)
+// FIC: Obtiene la cadena de opciones completa para una expiración específica de Yahoo Finance v7. (EN)
+// Returns null on network failure or blocked crumb — caller should return 502.
+// TODO: replace Yahoo with tradierClient when TRADIER_API_KEY is available
+export async function fetchYahooOptionChain(
+  ticker: string,
+  expirationTimestamp: number,
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch
+): Promise<YahooOptionChainData | null> {
+  try {
+    const session = await getYahooSession(fetchImpl);
+    const url =
+      `${YAHOO_OPTIONS_URL}/${encodeURIComponent(ticker)}` +
+      `?crumb=${encodeURIComponent(session.crumb)}&date=${expirationTimestamp}`;
+
+    const ac = new AbortController();
+    const tid = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const res = await fetchImpl(url, {
+        headers: {
+          "User-Agent": YAHOO_USER_AGENT,
+          Cookie: session.cookie,
+          Accept: "application/json",
+        },
+        signal: ac.signal,
+      });
+
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as {
+        optionChain?: {
+          result?: Array<{
+            expirationDates?: number[];
+            quote?: { regularMarketPrice?: number };
+            options?: Array<{
+              calls?: Record<string, unknown>[];
+              puts?: Record<string, unknown>[];
+            }>;
+          }>;
+        };
+      };
+
+      const result = data?.optionChain?.result?.[0];
+      if (!result) return null;
+
+      const opts = result.options?.[0] ?? {};
+      const calls = (opts.calls ?? []).map(mapYahooContract);
+      const puts  = (opts.puts  ?? []).map(mapYahooContract);
+
+      return {
+        calls,
+        puts,
+        underlyingPrice: result.quote?.regularMarketPrice ?? 0,
+        expirationDates: result.expirationDates ?? [],
+      };
+    } finally {
+      clearTimeout(tid);
+    }
+  } catch {
+    return null;
+  }
+}
+
+// FIC: Fetch all available expiration dates from Yahoo Finance v7. (EN)
+// FIC: Obtiene todas las fechas de expiración disponibles de Yahoo Finance v7. (ES)
+// Returns null on failure — caller should return 502.
+// TODO: replace Yahoo with tradierClient when TRADIER_API_KEY is available
+export async function fetchYahooExpirations(
+  ticker: string,
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch
+): Promise<number[] | null> {
+  try {
+    const session = await getYahooSession(fetchImpl);
+    const url =
+      `${YAHOO_OPTIONS_URL}/${encodeURIComponent(ticker)}` +
+      `?crumb=${encodeURIComponent(session.crumb)}`;
+
+    const ac = new AbortController();
+    const tid = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const res = await fetchImpl(url, {
+        headers: {
+          "User-Agent": YAHOO_USER_AGENT,
+          Cookie: session.cookie,
+          Accept: "application/json",
+        },
+        signal: ac.signal,
+      });
+
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as {
+        optionChain?: {
+          result?: Array<{ expirationDates?: number[] }>;
+        };
+      };
+
+      return data?.optionChain?.result?.[0]?.expirationDates ?? null;
+    } finally {
+      clearTimeout(tid);
+    }
+  } catch {
+    return null;
+  }
+}

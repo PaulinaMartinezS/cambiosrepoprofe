@@ -156,3 +156,143 @@ export const parseYahooChart: ParseFn = async (ticker, period, fetchImpl) => {
     return chartFallback(ticker);
   }
 };
+
+// FIC: OHLC candle shape used by the SuperChart route — includes unix timestamp. (EN)
+// FIC: Shape de vela OHLC usada por la ruta SuperChart — incluye timestamp unix. (ES)
+export interface OhlcCandle {
+  time: number;  // unix seconds
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+// FIC: Map timeframe string from frontend to Yahoo Finance interval and range params. (EN)
+// FIC: Mapea string de timeframe del frontend a parámetros interval y range de Yahoo Finance. (ES)
+// Yahoo hard limits: 1m→7d, 5m/15m→60d, 60m→730d, 1d/1wk/1mo→max
+function timeframeToYahooParams(timeframe: string): { interval: string; range: string } {
+  switch (timeframe) {
+    case "1m":  return { interval: "1m",  range: "7d" };
+    case "5m":  return { interval: "5m",  range: "60d" };
+    case "15m": return { interval: "15m", range: "60d" };
+    case "1h":  return { interval: "60m", range: "730d" };
+    case "4h":  return { interval: "60m", range: "730d" }; // Yahoo has no 4h — use 60m
+    case "1w":  return { interval: "1wk", range: "max" };
+    case "1M":  return { interval: "1mo", range: "max" };
+    default:    return { interval: "1d",  range: "5y" };   // 1d default — ~1 260 trading days
+  }
+}
+
+// FIC: Map a requested date range (days back) to the closest Yahoo range string. (EN)
+// FIC: Mapea un rango solicitado (días hacia atrás) al string de range de Yahoo más cercano. (ES)
+function daysToYahooRange(daysBack: number, interval: string): string {
+  // Enforce Yahoo API hard limits per interval
+  if (interval === "1m")  return "7d";
+  if (interval === "5m" || interval === "15m") return daysBack <= 30 ? "1mo" : "60d";
+  if (interval === "60m") return daysBack <= 365 ? "1y" : "730d";
+  // For daily/weekly/monthly — map freely
+  if (daysBack <= 5)    return "5d";
+  if (daysBack <= 35)   return "1mo";
+  if (daysBack <= 95)   return "3mo";
+  if (daysBack <= 200)  return "6mo";
+  if (daysBack <= 400)  return "1y";
+  if (daysBack <= 800)  return "2y";
+  if (daysBack <= 1900) return "5y";
+  return "max";
+}
+
+// FIC: Fetch real OHLCV candles from Yahoo Finance v8 chart API, mapped to OhlcCandle[]. (EN)
+// FIC: Obtiene velas OHLCV reales de la API v8 chart de Yahoo Finance, mapeadas a OhlcCandle[]. (ES)
+// Returns null on network failure so the caller can fall back gracefully.
+export async function fetchYahooOhlc(
+  symbol: string,
+  timeframe: string,
+  fetchImpl: typeof globalThis.fetch = globalThis.fetch,
+  startDateIso?: string
+): Promise<OhlcCandle[] | null> {
+  const { interval, range: defaultRange } = timeframeToYahooParams(timeframe);
+  const range = startDateIso
+    ? daysToYahooRange(
+        Math.max(1, Math.round((Date.now() - new Date(startDateIso).getTime()) / 86_400_000)),
+        interval
+      )
+    : defaultRange;
+
+  const res = await fetchChart(symbol, range, fetchImpl).catch(() => null);
+  // Override the hardcoded interval=1d in fetchChart by re-fetching with the right interval
+  // fetchChart always uses interval=1d — we need to fetch directly for intraday
+  if (!res && interval !== "1d") return null;
+
+  // For intervals other than 1d, fetch directly with the right interval
+  let chartRes: Response | null = null;
+  if (interval === "1d") {
+    chartRes = res;
+  } else {
+    for (const baseUrl of [YAHOO_CHART_URL, YAHOO_CHART_FALLBACK_URL]) {
+      try {
+        const url = `${baseUrl}/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
+        const ac = new AbortController();
+        const tid = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
+        try {
+          const r = await fetchImpl(url, {
+            headers: { "User-Agent": YAHOO_USER_AGENT, Accept: "application/json" },
+            signal: ac.signal,
+          });
+          if (r.ok) { chartRes = r; break; }
+        } finally {
+          clearTimeout(tid);
+        }
+      } catch { /* try next */ }
+    }
+    if (!chartRes) return null;
+  }
+
+  if (!chartRes) return null;
+
+  try {
+    const data = (await chartRes.json()) as {
+      chart?: {
+        result?: Array<{
+          timestamp?: number[];
+          indicators?: {
+            quote?: Array<{
+              open?: (number | null)[];
+              high?: (number | null)[];
+              low?: (number | null)[];
+              close?: (number | null)[];
+              volume?: (number | null)[];
+            }>;
+          };
+        }>;
+        error?: unknown;
+      };
+    };
+
+    const result = data?.chart?.result?.[0];
+    if (!result || data?.chart?.error) return null;
+
+    const timestamps = result.timestamp ?? [];
+    const quote = result.indicators?.quote?.[0];
+    if (!quote || timestamps.length === 0) return null;
+
+    const opens   = quote.open   ?? [];
+    const highs   = quote.high   ?? [];
+    const lows    = quote.low    ?? [];
+    const closes  = quote.close  ?? [];
+    const volumes = quote.volume ?? [];
+
+    const candles: OhlcCandle[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const o = opens[i], h = highs[i], l = lows[i], c = closes[i], v = volumes[i];
+      if (o != null && h != null && l != null && c != null && v != null &&
+          isFinite(o) && isFinite(h) && isFinite(l) && isFinite(c) && isFinite(v)) {
+        candles.push({ time: timestamps[i], open: o, high: h, low: l, close: c, volume: v });
+      }
+    }
+
+    return candles.length >= 2 ? candles : null;
+  } catch {
+    return null;
+  }
+}

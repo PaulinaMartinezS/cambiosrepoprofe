@@ -17,12 +17,22 @@ export interface SelectedSignal {
   metadata?: Record<string, unknown>;
 }
 
+// FIC: Strike selected from OptionChainTable — shared via store so CoverageStrategyModal can read it. (EN)
+// FIC: Strike seleccionado de OptionChainTable — compartido via store para que CoverageStrategyModal lo lea. (ES)
+export interface SelectedStrike {
+  strike: number;
+  type: "call" | "put";
+  premium: number;
+  iv: number;
+}
+
 type RuntimeMode = "online" | "offline";
 type OperationalMode = "demo" | "real";
 
 interface SignalStoreState {
   selectedInstrument?: SelectedInstrument;
   selectedSignal?: SelectedSignal;
+  selectedStrike?: SelectedStrike;
   runtimeMode: RuntimeMode;
   operationalMode: OperationalMode;
 }
@@ -75,6 +85,10 @@ export function useSignalStore() {
     },
     setSelectedSignal: (signal: SelectedSignal) => {
       state = { ...state, selectedSignal: signal };
+      emit();
+    },
+    setSelectedStrike: (strike: SelectedStrike | undefined) => {
+      state = { ...state, selectedStrike: strike };
       emit();
     },
     setRuntimeMode: (mode: RuntimeMode) => {

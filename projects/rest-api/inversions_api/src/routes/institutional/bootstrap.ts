@@ -96,24 +96,13 @@ export function getInstitutionalRouteContext(): InstitutionalRouteContext {
   return _context;
 }
 
-// ─── Synthetic contract builder ───────────────────────────────────────────────
+// ─── Contract builder ─────────────────────────────────────────────────────────
 
-const PERIOD_FACTOR: Record<InstitutionalAnalysisPeriod, number> = {
-  intraday: 0.15,
-  daily: 0.35,
-  weekly: 0.65,
-  monthly: 1.0,
-  quarterly: 1.5,
-};
-
-const HORIZON_FACTOR: Record<InstitutionalHorizon, number> = {
-  short: 0.6,
-  medium: 1.0,
-  long: 1.4,
-};
-
-// FIC: Build an InstitutionalAnalysisContract with deterministic synthetic values from query params. (EN)
-// FIC: Construye un InstitutionalAnalysisContract con valores sintéticos deterministas desde query params. (ES)
+// FIC: Build an InstitutionalAnalysisContract with zero-based defaults — engines override with real data. (EN)
+// FIC: Construye un InstitutionalAnalysisContract con defaults en cero — los engines los sobrescriben con datos reales. (ES)
+// Volume, fundsOwnershipPct, inflows and outflows start at 0 so that when real institutional
+// sources (SEC 13F, FINRA, Yahoo) succeed they fully override these values. If sources fail,
+// the metrics show 0 ("unknown") rather than fabricated numbers.
 export function buildInstitutionalAnalysisContractFromRequest(
   req: Request
 ): InstitutionalAnalysisContract {
@@ -126,36 +115,16 @@ export function buildInstitutionalAnalysisContractFromRequest(
   const safePeriod = validPeriods.includes(period) ? period : "daily";
   const safeHorizon = validHorizons.includes(horizon) ? horizon : "medium";
 
-  // FIC: Deterministic seed from ticker character codes — same ticker always yields same values. (EN)
-  // FIC: Semilla determinista desde códigos de caracteres del ticker — mismo ticker = mismos valores. (ES)
-  const seed = ticker.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-
-  const pf = PERIOD_FACTOR[safePeriod];
-  const hf = HORIZON_FACTOR[safeHorizon];
-
-  const volume = Math.round(900_000 + seed * 850 * pf * hf);
-  const liquidity = volume >= 2_000_000 ? "high" : volume >= 1_200_000 ? "medium" : "low";
-
-  const fundsOwnershipPct = 18 + (seed % 34) + (hf > 1 ? 4 : 0) + (pf > 1 ? 3 : 0);
-  const inflows = volume * (0.34 + (seed % 10) * 0.008);
-  const outflows = volume * (0.18 + (seed % 7) * 0.005);
-
   return createInstitutionalAnalysisContract({
     ticker,
     period: safePeriod,
-    volume,
-    liquidity,
     horizon: safeHorizon,
-    fundsOwnershipPct: Math.min(fundsOwnershipPct, 95),
-    flows: {
-      inflows,
-      outflows,
-      asOf: new Date().toISOString(),
-    },
-    openPositions: {
-      count: 50 + (seed % 200),
-      notional: volume * 12,
-    },
+    // FIC: All market metrics default to 0 — real values come from data sources resolved by the engines. (EN)
+    volume: 0,
+    liquidity: "low",
+    fundsOwnershipPct: 0,
+    flows: { inflows: 0, outflows: 0, asOf: new Date().toISOString() },
+    openPositions: { count: 0, notional: 0 },
     sourceIds: ["yahoo_chart", "sec_edgar_13f", "finra_short_interest", "yahoo_options_flow", "yahoo_institutional"],
     requestedAt: new Date().toISOString(),
     analysisId: randomUUID(),

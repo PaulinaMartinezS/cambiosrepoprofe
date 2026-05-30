@@ -7,7 +7,6 @@ import type { RealCandle } from "./yahooChartParser";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEFAULT_MIN_CANDLES = 200;
 const FAST_MA = 50;
 const SLOW_MA = 200;
 const VOLUME_LOOKBACK = 20;
@@ -61,7 +60,26 @@ export class InstitutionalTrendEngine {
     request: InstitutionalAnalysisContract,
     preResolvedResult?: InstitutionalResolveResult
   ): Promise<InstitutionalTrendResult> {
-    const candles = this.extractRealCandles(preResolvedResult) ?? this.buildFallbackCandles(request.ticker);
+    const realCandles = this.extractRealCandles(preResolvedResult);
+
+    if (!realCandles || realCandles.length < 20) {
+      // FIC: No real candles available — return neutral result instead of synthetic data. (EN)
+      // FIC: Sin velas reales disponibles — retorna resultado neutral en lugar de datos sintéticos. (ES)
+      return {
+        ticker: request.ticker,
+        direction: "neutral",
+        sma50: 0,
+        sma200: 0,
+        trendStrength: 0,
+        continuityProbability: 0.5,
+        institutionalScore: 0.2,
+        volumeCorrelation: 0,
+        candlesAnalyzed: 0,
+        analyzedAt: new Date().toISOString(),
+      };
+    }
+
+    const candles = realCandles;
     const closes = candles.map((c) => c.close);
     const volumes = candles.map((c) => c.volume);
 
@@ -122,37 +140,6 @@ export class InstitutionalTrendEngine {
       volumeCorrelation,
       candlesAnalyzed: candles.length,
       analyzedAt: new Date().toISOString(),
-    };
-  }
-
-  // FIC: Build 200+ fallback candles using seeded LCG PRNG — same ticker = same sequence. (EN)
-  // FIC: Genera 200+ velas de respaldo con PRNG LCG seeded — mismo ticker = misma secuencia. (ES)
-  private buildFallbackCandles(ticker: string, count = DEFAULT_MIN_CANDLES): Candle[] {
-    const seed = ticker.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
-    const rand = this.seededRandom(seed);
-
-    const basePrice = 100 + (seed % 900);
-    const baseVol = 500_000 + seed * 1_000;
-    const candles: Candle[] = [];
-    let price = basePrice;
-
-    for (let i = 0; i < count; i++) {
-      const drift = (rand() - 0.5) * 0.02; // ±1% random daily drift
-      price = Math.max(price * (1 + drift), 1);
-      const volume = baseVol * (0.7 + rand() * 0.6);
-      candles.push({ close: price, volume });
-    }
-    return candles;
-  }
-
-  // FIC: Seeded LCG PRNG — deterministic sequence for a given seed value. (EN)
-  // FIC: PRNG LCG con seed — secuencia determinista para un valor de seed dado. (ES)
-  // Algorithm: s = Math.imul(s, 1664525) + 1013904223 | 0
-  private seededRandom(seed: number): () => number {
-    let s = seed | 0;
-    return () => {
-      s = (Math.imul(s, 1664525) + 1013904223) | 0;
-      return (s >>> 0) / 0xffffffff;
     };
   }
 

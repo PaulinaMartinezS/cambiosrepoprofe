@@ -117,6 +117,10 @@ export function adaptContractToEngine(params: {
   riskTolerancePct?: number;
   iv?: number;
   dte?: number;
+  // FIC: Real market premiums from option chain — if provided, skip Black-Scholes estimation. (EN)
+  // FIC: Primas reales de la cadena de opciones — si se proveen, omitir estimación Black-Scholes. (ES)
+  putPremiumOverride?: number | null;
+  callPremiumOverride?: number | null;
 }): CoverageStrategyContract {
   const {
     kind, ticker, underlyingPrice, shares,
@@ -128,8 +132,15 @@ export function adaptContractToEngine(params: {
     dte = 90,
   } = params;
 
-  const putPremium = estimateOptionPremium("put", putStrikePrice, iv, dte, underlyingPrice);
-  const callPremium = estimateOptionPremium("call", callStrikePrice, iv, dte, underlyingPrice);
+  // FIC: Use real premium when provided, otherwise fall back to Black-Scholes estimate. (EN)
+  // FIC: Usar prima real si se provee, sino caer a estimación Black-Scholes. (ES)
+  const putPremium = params.putPremiumOverride != null
+    ? params.putPremiumOverride
+    : estimateOptionPremium("put", putStrikePrice, iv, dte, underlyingPrice);
+
+  const callPremium = params.callPremiumOverride != null
+    ? params.callPremiumOverride
+    : estimateOptionPremium("call", callStrikePrice, iv, dte, underlyingPrice);
   const expiry = new Date(Date.now() + dte * 86_400_000).toISOString().slice(0, 10);
 
   const legs: CoverageStrategyContract["legs"] = [];
@@ -154,6 +165,8 @@ export function adaptContractToEngine(params: {
     capital,
     riskTolerancePct,
     requestedAt: new Date().toISOString(),
+    iv: params.iv && params.iv > 0 ? params.iv : undefined,
+    dte: params.dte && params.dte > 0 ? params.dte : undefined,
   };
 }
 

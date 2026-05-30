@@ -19,6 +19,10 @@ export interface CoverageRequestBody {
   callStrikePrice?: number;
   iv?: number;
   dte?: number;
+  // FIC: Real market premiums from option chain — overrides Black-Scholes estimation when set. (EN)
+  // FIC: Primas reales de la cadena de opciones — sobrescribe la estimación Black-Scholes cuando se establecen. (ES)
+  putPremium?: number;
+  callPremium?: number;
   institutionalContext?: {
     direction: "bullish" | "bearish" | "lateral";
     continuityProbability: number;

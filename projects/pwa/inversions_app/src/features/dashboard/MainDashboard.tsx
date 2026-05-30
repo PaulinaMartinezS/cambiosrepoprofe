@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { GlobalChatDrawer } from "../../pages/ai/GlobalChatDrawer";
 import { SuperChart } from "./SuperChart";
+import { OptionChainTableConnected } from "../options/OptionChainTable";
 
 import { TimeControls } from "./TimeControls";
-import { IndicatorsMenu } from "./IndicatorsMenu";
 import { ConfluenceSignalsTable } from "./ConfluenceSignalsTable";
 import { SimulationControlPanel } from "./simulation/SimulationControlPanel";
 import { SimulatorStrategySection } from "./simulation/SimulatorStrategySection";
@@ -32,8 +32,12 @@ export function MainDashboard() {
   const [coverageRequest, setCoverageRequest] = useState<{ params: CoverageModalParams; kind: string } | null>(null);
   const [institutionalCoreWasActive, setInstitutionalCoreWasActive] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
+  const [selectedStrikeData, setSelectedStrikeData] = useState<{
+    strike: number; type: "call" | "put"; premium: number; iv: number;
+  } | null>(null);
+  const [activeChartTab, setActiveChartTab] = useState<"chart" | "chain">("chart");
 
-  const { selectedInstrument, runtimeMode, operationalMode } = useSignalStore();
+  const { selectedInstrument, selectedStrike, runtimeMode, operationalMode, setSelectedStrike } = useSignalStore();
   const { setAnalysisCategory } = useAppShellStore();
   const { results: institutionalResults, loading: institutionalLoading, errors: institutionalErrors } = useInstitutionalStore();
 
@@ -59,6 +63,16 @@ export function MainDashboard() {
   const handleCoverageConfirmed = useCallback(
     (params: CoverageModalParams, kind: string) => setCoverageRequest({ params, kind }),
     []
+  );
+
+  // FIC: Writes selected strike to global store so CoverageStrategyModal can read it from anywhere. (EN)
+  // FIC: Escribe el strike seleccionado en el store global para que CoverageStrategyModal lo lea desde cualquier lugar. (ES)
+  const handleStrikeSelect = useCallback(
+    (strike: number, type: "call" | "put", premium: number, iv: number) => {
+      setSelectedStrikeData({ strike, type, premium, iv });
+      setSelectedStrike({ strike, type, premium, iv });
+    },
+    [setSelectedStrike]
   );
 
   // FIC: Called when user clicks Execute — fires institutional analysis if A_INSTITUCIONAL core is active. (EN)
@@ -136,20 +150,84 @@ export function MainDashboard() {
         />
       </div>
 
-      {/* ── Chart + time/indicator controls */}
+      {/* ── Chart + Cadena de Opciones (tabs dentro de la misma card) ──── */}
       {!isTestEnv && (
         <div style={{ display: "grid", gap: "var(--space-sm)" }}>
-          <div className="card" style={{ minHeight: 380 }}>
-            <SuperChart symbol={selectedSymbol} timeframe={timeframe} startDate={periodRange?.startDate} endDate={periodRange?.endDate} />
+          <div className="card" style={{ overflow: "hidden" }}>
+            {/* Tab bar */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "2px",
+              padding: "var(--space-xs) var(--space-sm)",
+              borderBottom: "1px solid var(--color-border)",
+              background: "var(--color-surface)",
+            }}>
+              {(["chart", "chain"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveChartTab(tab)}
+                  style={{
+                    background: activeChartTab === tab ? "var(--color-surface-raised)" : "transparent",
+                    color: activeChartTab === tab ? "var(--color-text)" : "var(--color-text-muted)",
+                    border: activeChartTab === tab ? "1px solid var(--color-border)" : "1px solid transparent",
+                    borderRadius: "var(--radius-xs)",
+                    padding: "0.25rem 0.85rem",
+                    fontSize: "var(--font-size-xs)",
+                    fontWeight: activeChartTab === tab ? "var(--font-weight-bold)" as any : "normal",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {tab === "chart" ? "Gráfico" : "Cadena de Opciones"}
+                </button>
+              ))}
+
+              {/* TimeControls integrado en la barra de tabs */}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+                <TimeControls
+                  symbol={selectedSymbol}
+                  onTimeframeChange={(tf) => setTimeframe(tf)}
+                  onPeriodChange={(_p, startDate, endDate) => setPeriodRange({ startDate, endDate })}
+                />
+              </div>
+
+              {/* Strike seleccionado — visible en ambos tabs */}
+              {(() => {
+                const sd = selectedStrikeData ?? selectedStrike;
+                if (!sd) return null;
+                const isCall = sd.type === "call";
+                return (
+                  <span style={{
+                    marginLeft: "var(--space-sm)",
+                    fontSize: "var(--font-size-xs)",
+                    color: isCall ? "var(--color-buy)" : "var(--color-sell)",
+                    display: "flex", alignItems: "center", gap: "var(--space-sm)",
+                  }}>
+                    <span>Strike: ${sd.strike} {sd.type.toUpperCase()}</span>
+                    <span>Prima: ${sd.premium.toFixed(2)}</span>
+                    <span>IV: {(sd.iv * 100).toFixed(1)}%</span>
+                  </span>
+                );
+              })()}
+            </div>
+
+            {/* Chart tab */}
+            <div style={{ display: activeChartTab === "chart" ? "block" : "none", minHeight: 380 }}>
+              <SuperChart symbol={selectedSymbol} timeframe={timeframe} startDate={periodRange?.startDate} endDate={periodRange?.endDate} />
+            </div>
+
+            {/* Chain tab */}
+            <div style={{
+              display: activeChartTab === "chain" ? "flex" : "none",
+              flexDirection: "column",
+              height: 420,
+              padding: "var(--space-md)",
+            }}>
+              <OptionChainTableConnected onSelectStrike={handleStrikeSelect} />
+            </div>
           </div>
-          <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--space-sm)", flexWrap: "wrap" }}>
-            <IndicatorsMenu />
-            <TimeControls
-              symbol={selectedSymbol}
-              onTimeframeChange={(tf) => setTimeframe(tf)}
-              onPeriodChange={(_p, startDate, endDate) => setPeriodRange({ startDate, endDate })}
-            />
-          </div>
+
         </div>
       )}
 

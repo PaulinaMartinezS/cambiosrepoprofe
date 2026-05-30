@@ -37,6 +37,8 @@ const BADGE_COLORS: Record<string, string> = {
 export function CoverageStrategyModal({ isOpen, onClose, initialTicker, initialKind, institutionalContext }: Props) {
   const { selectedInstrument } = useSignalStore();
 
+  const { selectedStrike } = useSignalStore();
+
   const [ticker, setTicker] = useState(initialTicker ?? selectedInstrument?.symbol ?? "SPY");
   const [currentPrice, setCurrentPrice] = useState("");
   const [priceLoading, setPriceLoading] = useState(false);
@@ -45,6 +47,9 @@ export function CoverageStrategyModal({ isOpen, onClose, initialTicker, initialK
   const [putStrike, setPutStrike] = useState("");
   const [callStrike, setCallStrike] = useState("");
   const [riskPct, setRiskPct] = useState("5");
+  const [chainIv, setChainIv] = useState<number | null>(null);
+  const [chainPutPremium, setChainPutPremium] = useState<number | null>(null);
+  const [chainCallPremium, setChainCallPremium] = useState<number | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,8 +64,27 @@ export function CoverageStrategyModal({ isOpen, onClose, initialTicker, initialK
       setResults(null);
       setError(null);
       setSelectedKind(initialKind ?? null);
+
+      // FIC: Pre-fill strike and IV from OptionChainTable selection if available. (EN)
+      // FIC: Pre-llenar strike e IV desde la selección de OptionChainTable si está disponible. (ES)
+      if (selectedStrike) {
+        if (selectedStrike.type === "put") {
+          setPutStrike(String(selectedStrike.strike));
+          setChainPutPremium(selectedStrike.premium);
+          setChainCallPremium(null);
+        } else {
+          setCallStrike(String(selectedStrike.strike));
+          setChainCallPremium(selectedStrike.premium);
+          setChainPutPremium(null);
+        }
+        setChainIv(selectedStrike.iv > 0 ? selectedStrike.iv : null);
+      } else {
+        setChainIv(null);
+        setChainPutPremium(null);
+        setChainCallPremium(null);
+      }
     }
-  }, [isOpen, initialTicker, selectedInstrument?.symbol, initialKind]);
+  }, [isOpen, initialTicker, selectedInstrument?.symbol, initialKind, selectedStrike]);
 
   useEffect(() => {
     if (!isOpen || !ticker) return;
@@ -111,6 +135,11 @@ export function CoverageStrategyModal({ isOpen, onClose, initialTicker, initialK
         riskTolerancePct: parseFloat(riskPct) / 100,
         ...(putStrike ? { putStrikePrice: parseFloat(putStrike) } : {}),
         ...(callStrike ? { callStrikePrice: parseFloat(callStrike) } : {}),
+        // FIC: Real IV and premiums from option chain — backend uses these instead of Black-Scholes. (EN)
+        // FIC: IV y primas reales de la cadena de opciones — el backend los usa en lugar de Black-Scholes. (ES)
+        ...(chainIv ? { iv: chainIv } : {}),
+        ...(chainPutPremium != null ? { putPremium: chainPutPremium } : {}),
+        ...(chainCallPremium != null ? { callPremium: chainCallPremium } : {}),
         institutionalContext: institutionalContext
           ? {
               direction: (
@@ -221,15 +250,36 @@ export function CoverageStrategyModal({ isOpen, onClose, initialTicker, initialK
           <input style={inputStyle} type="number" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="100" />
         </div>
         <div>
-          <label style={labelStyle}>Strike Put (opc.)</label>
+          <label style={labelStyle}>
+            Strike Put (opc.)
+            {chainPutPremium != null && (
+              <span style={{ marginLeft: "var(--space-xs)", color: "var(--color-buy)", fontStyle: "italic" }}>
+                · prima ${chainPutPremium.toFixed(2)}
+              </span>
+            )}
+          </label>
           <input style={inputStyle} type="number" value={putStrike} onChange={(e) => setPutStrike(e.target.value)} placeholder="auto" />
         </div>
         <div>
-          <label style={labelStyle}>Strike Call (opc.)</label>
+          <label style={labelStyle}>
+            Strike Call (opc.)
+            {chainCallPremium != null && (
+              <span style={{ marginLeft: "var(--space-xs)", color: "var(--color-sell)", fontStyle: "italic" }}>
+                · prima ${chainCallPremium.toFixed(2)}
+              </span>
+            )}
+          </label>
           <input style={inputStyle} type="number" value={callStrike} onChange={(e) => setCallStrike(e.target.value)} placeholder="auto" />
         </div>
         <div>
-          <label style={labelStyle}>Riesgo (%)</label>
+          <label style={labelStyle}>
+            Riesgo (%)
+            {chainIv != null && (
+              <span style={{ marginLeft: "var(--space-xs)", color: "var(--color-accent)", fontStyle: "italic" }}>
+                · IV {(chainIv * 100).toFixed(1)}% (chain)
+              </span>
+            )}
+          </label>
           <input style={inputStyle} type="number" value={riskPct} onChange={(e) => setRiskPct(e.target.value)} placeholder="5" />
         </div>
       </div>

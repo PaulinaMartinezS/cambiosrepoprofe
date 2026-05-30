@@ -39,6 +39,8 @@ import volatilityAnalysisRouter from "./routes/ai/volatilityAnalysis";
 import { coverageAnalyzeRouter } from "./routes/coverage/analyze";
 import { coverageCompareRouter } from "./routes/coverage/compare";
 import { coverageSimulateRouter } from "./routes/coverage/simulate";
+import { optionChainRouter } from "./routes/options/chain";
+import { optionExpirationsRouter } from "./routes/options/expirations";
 
 const envValidation = validateEnvironment();
 if (!envValidation.isValid) {
@@ -92,6 +94,8 @@ app.use("/api/ai/volatility", volatilityAnalysisRouter);
 app.use("/api/coverage", coverageAnalyzeRouter);
 app.use("/api/coverage", coverageCompareRouter);
 app.use("/api/coverage", coverageSimulateRouter);
+app.use("/api/options", indicatorsRateLimit, optionChainRouter);
+app.use("/api/options", indicatorsRateLimit, optionExpirationsRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });

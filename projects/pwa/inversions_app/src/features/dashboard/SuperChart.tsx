@@ -9,6 +9,7 @@ import {
 } from "lightweight-charts";
 import { useSignalStore } from "../../store/signals";
 import { getAuthHeaders } from "../../services/signals/signalApi";
+import { Badge } from "../../components/ui/Badge";
 
 interface OHLC {
   time: string;
@@ -67,6 +68,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [candles, setCandles] = useState<OHLC[]>([]);
   const [signals, setSignals] = useState<SignalMark[]>([]);
+  const [dataSource, setDataSource] = useState<"tradier" | "yahoo" | "mock" | null>(null);
 
   const { selectedSignal } = useSignalStore();
 
@@ -172,8 +174,9 @@ export const SuperChart: React.FC<SuperChartProps> = ({
         setLoading(true);
         setError(null);
 
+        const startParam = startDate ? `&startDate=${startDate.toISOString()}` : "";
         const response = await fetch(
-          `/api/market-data/ohlc?symbol=${symbol}&timeframe=${timeframe}`,
+          `/api/market-data/ohlc?symbol=${symbol}&timeframe=${timeframe}${startParam}`,
           { headers: getAuthHeaders() }
         );
         if (!response.ok) {
@@ -181,6 +184,7 @@ export const SuperChart: React.FC<SuperChartProps> = ({
         }
 
         const data = await response.json();
+        setDataSource(data.source ?? "mock");
         const rawCandles: OHLC[] = data.candles || [];
 
         const filteredCandles = rawCandles.filter((candle) => {
@@ -279,8 +283,19 @@ export const SuperChart: React.FC<SuperChartProps> = ({
         ref={containerRef}
         style={{ flex: 1, width: "100%", position: "relative", minHeight: 340 }}
       />
-      <div style={{ padding: "0.4rem 1rem", borderTop: "1px solid var(--color-border)", background: "var(--color-surface)", fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "flex", justifyContent: "space-between" }}>
-        <span>{symbol} · {timeframe}{candles.length > 0 ? ` · ${candles.length} velas` : ""}</span>
+      <div style={{ padding: "0.4rem 1rem", borderTop: "1px solid var(--color-border)", background: "var(--color-surface)", fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          {symbol} · {timeframe}{candles.length > 0 ? ` · ${candles.length} velas` : ""}
+          {dataSource === "mock" && (
+            <Badge label="DEMO" color="var(--color-warning)" size="sm" />
+          )}
+          {dataSource === "yahoo" && (
+            <Badge label="Yahoo" color="var(--color-text-muted)" size="sm" />
+          )}
+          {dataSource === "tradier" && (
+            <Badge label="Live" color="var(--color-buy)" size="sm" />
+          )}
+        </span>
         <span>
           {selectedSignal
             ? `Señal: ${selectedSignal.symbol} @ ${selectedSignal.confidence?.toFixed(2) || "?"}`
