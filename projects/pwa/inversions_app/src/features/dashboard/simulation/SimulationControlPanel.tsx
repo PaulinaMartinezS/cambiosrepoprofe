@@ -26,7 +26,7 @@ import { WheelParamsModal, type WheelModalParams } from "./WheelParamsModal";
 import { ComplexStrategyParamsModal, type ComplexFormState } from "./ComplexStrategyParamsModal";
 import { executeStrategy } from "../../../services/strategies/strategyApi";
 import type { FromChainResponse } from "../../../services/strategies/strategyApi";
-import { useSignalLimits } from "../../../store/signals";
+import { useSignalStore } from "../../../store/signals";
 
 // ─── Panel CSS ─────────────────────────────────────────────────────────────────
 // Uses only real Revolut design-system tokens from tokens.css.
@@ -575,7 +575,7 @@ export function SimulationControlPanel({
   onTermResult,
   onComplexResult,
 }: Props) {
-  const incrementSimulationRunCount = useSignalLimits((s) => s.incrementSimulationRunCount);
+  const incrementSimulationRunCount = useSignalStore().incrementSimulationRunCount;
   const [preset, setPreset]               = useState<Preset>("3M");
   const [estrategiaFrom, setEstrategiaFrom] = useState(isoToday());
   const [estrategiaTo, setEstrategiaTo]   = useState(isoPlusDays(30));
