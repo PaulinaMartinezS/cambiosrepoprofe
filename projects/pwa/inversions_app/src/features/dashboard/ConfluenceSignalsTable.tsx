@@ -376,15 +376,15 @@ export function ConfluenceSignalsTable({ symbol, rows: rowsProp, activeStrategy 
               );
             })() : null}
 
-            {/* FIC: Non-A_TECNICO/A_IA: ObservationsTab when stubRow available (upstream), else plain stubResumen. (EN) */}
-            {stubCore !== "A_TECNICO" && stubCore !== "A_IA" && stubRow && (
+            {/* FIC: Non-A_IA: ObservationsTab when stubRow available (upstream), else plain stubResumen. (EN) */}
+            {stubCore !== "A_IA" && stubRow && (
               <div style={{ flex: 1, overflowY: "auto", marginBottom: "1.25rem" }}>
                 <ObservationsTab row={stubRow} activeStrategy={activeStrategy} />
               </div>
             )}
 
 
-            {stubCore !== "A_TECNICO" && stubCore !== "A_IA" && !stubRow && stubResumen && (
+            {stubCore !== "A_IA" && !stubRow && stubResumen && (
               <>
                 <div style={{
                   borderTop: "1px solid var(--color-border-subtle)",
