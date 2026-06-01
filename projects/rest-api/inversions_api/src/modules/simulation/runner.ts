@@ -62,7 +62,6 @@ export const KNOWN_ESTRATEGIAS = new Set<string>([
   "STRADDLE",
   "STRANGLE",
   "BUTTERFLY",
-  "COVERED_CALL",
   "PROTECTIVE_PUT",
   "MARRIED_PUT",
   "COLLAR_PUT",
@@ -290,6 +289,7 @@ export async function runSimulation(
         trendEngine.analyze(contract, undefined),
         expirationEngine.analyze(contract, undefined),
       ]);
+      const lastClose = candles[candles.length - 1]?.close ?? candles[candles.length - 1]?.open ?? 0;
       institutionalRows = buildInstitutionalRows({
         ticket: request.ticket,
         timeframe: request.temporalidad,
@@ -298,6 +298,8 @@ export async function runSimulation(
         zones:      zonesSettled.status      === "fulfilled" ? zonesSettled.value      : null,
         trend:      trendSettled.status      === "fulfilled" ? trendSettled.value      : null,
         expiration: expirationSettled.status === "fulfilled" ? expirationSettled.value : null,
+        estrategia: request.estrategia,
+        precioActual: lastClose,
       });
     } catch (err) {
       console.error("[A_INSTITUCIONAL] engine error — falling back to stub:", err);

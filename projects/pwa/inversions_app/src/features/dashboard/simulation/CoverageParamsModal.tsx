@@ -13,7 +13,6 @@ const STRATEGY_LABELS: Record<string, string> = {
   married_put:      "Married Put",
   collar_put:       "Collar Put",
   covered_straddle: "Covered Straddle",
-  COVERED_CALL:     "Covered Call",
   PROTECTIVE_PUT:   "Protective Put",
   MARRIED_PUT:      "Married Put",
   COLLAR_PUT:       "Collar Put",
@@ -22,7 +21,7 @@ const STRATEGY_LABELS: Record<string, string> = {
 
 // Qué campos mostrar según estrategia
 const SHOW_PUT_STRIKE  = new Set(["PROTECTIVE_PUT", "MARRIED_PUT", "COLLAR_PUT", "protective_put", "married_put", "collar_put"]);
-const SHOW_CALL_STRIKE = new Set(["COVERED_CALL", "COLLAR_PUT", "COVERED_STRADDLE", "covered_call", "collar_put", "covered_straddle"]);
+const SHOW_CALL_STRIKE = new Set(["COLLAR_PUT", "COVERED_STRADDLE", "collar_put", "covered_straddle"]);
 
 function callStrikeLabel(e: string): string {
   if (e === "COVERED_STRADDLE" || e === "covered_straddle") return "Strike (opc.)";

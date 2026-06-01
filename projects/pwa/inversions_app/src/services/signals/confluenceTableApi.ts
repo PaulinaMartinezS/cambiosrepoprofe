@@ -52,6 +52,7 @@ export interface ConfluenceSignalRow {
   disclaimer_id?: string;
   delta_vs_anterior: DeltaPrev;
   observacion: SignalObservation;
+  estrategia?: string;
   resumen_analisis?: string;
   optionLeg?: OptionGreeks;
   algorithm_version: string;
@@ -152,7 +153,6 @@ export const CANONICAL_ESTRATEGIAS = [
   "STRADDLE",
   "STRANGLE",
   "BUTTERFLY",
-  "COVERED_CALL",
   "PROTECTIVE_PUT",
   "MARRIED_PUT",
   "COLLAR_PUT",
