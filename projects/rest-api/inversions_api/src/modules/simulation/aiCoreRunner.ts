@@ -21,12 +21,18 @@ function parseAiDecision(rawText: string): { decision: "CALL" | "PUT" | "HOLD"; 
   }
 
   const lines = rawText.split("\n");
-  let justificacion = "Sin justificación estructurada devuelta por el modelo.";
-  const justificacionLine = lines.find(l => l.toUpperCase().includes("JUSTIFICACION:") || l.toUpperCase().includes("JUSTIFICACIÓN:"));
-  if (justificacionLine) {
-    justificacion = justificacionLine.replace(/^.*JUSTIFICACIÓ?N:\s*/i, "").trim();
-  } else if (rawText.length > 0) {
-    justificacion = rawText.length > 250 ? rawText.slice(0, 250) + "..." : rawText;
+  let justificacion = "";
+  
+  const justificacionIndex = lines.findIndex(l => l.toUpperCase().includes("JUSTIFICACION:") || l.toUpperCase().includes("JUSTIFICACIÓN:"));
+  if (justificacionIndex !== -1) {
+    const inlineJust = lines[justificacionIndex].replace(/^.*JUSTIFICACIÓ?N:\s*/i, "").trim();
+    // If the explanation continues on following lines, capture them too
+    const remainingLines = lines.slice(justificacionIndex + 1).join("\n").trim();
+    justificacion = inlineJust + (remainingLines ? "\n" + remainingLines : "");
+  } else {
+    // If it didn't follow the exact keyword format, just return the whole text (minus the decision line if possible)
+    justificacion = lines.filter(l => !l.toUpperCase().includes("DECISION:") && !l.toUpperCase().includes("DECISIÓN:")).join("\n").trim();
+    if (!justificacion) justificacion = rawText;
   }
 
   return { decision, justificacion, confidence: 0.85 };
