@@ -28,6 +28,21 @@ export interface URLAnalysisOptions {
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
+const SYMBOL_ALIASES: Record<string, string[]> = {
+  AAPL: ["apple", "iphone", "ipad", "mac"],
+  MSFT: ["microsoft", "azure", "windows", "copilot"],
+  NVDA: ["nvidia", "gpu", "blackwell", "cuda"],
+  TSLA: ["tesla", "elon", "model y", "model 3"],
+  AMZN: ["amazon", "aws", "prime"],
+  GOOGL: ["alphabet", "google", "youtube", "gemini"],
+  META: ["meta", "facebook", "instagram", "whatsapp"],
+  AMD: ["advanced micro devices", "radeon", "epyc", "ryzen"],
+  SPY: ["s&p 500", "sp500", "s&p", "stock market"],
+  QQQ: ["nasdaq 100", "nasdaq", "qqq"],
+  JPM: ["jpmorgan", "jp morgan", "chase"],
+  COIN: ["coinbase", "crypto exchange"]
+};
+
 export class URLAnalysisService {
   private analyzer: NewsSentimentAnalyzer;
   private timeoutMs: number;
@@ -58,7 +73,7 @@ export class URLAnalysisService {
       return {
         url,
         title: extractTitle(html) || company,
-        content: extractRelevantContent(html, this.maxChars),
+        content: extractRelevantContent(html, this.maxChars, company),
         source: hostnameOf(url),
         fetchedAt: new Date().toISOString()
       };
@@ -246,6 +261,7 @@ export async function analyzeNewsSource(input: NewsSourceInput, symbol?: string)
   let title = input.title?.trim();
   let rawText = input.text ?? "";
   let provider = input.provider ?? "manual";
+  let publishedAt = input.publishedAt ?? new Date().toISOString();
 
   if (input.url && !rawText) {
     provider = "url";
@@ -254,6 +270,8 @@ export async function analyzeNewsSource(input: NewsSourceInput, symbol?: string)
       const fetched = await service.fetchURLContent(input.url, safeSymbol);
       title = title ?? fetched.title;
       rawText = fetched.content;
+      provider = fetched.source;
+      publishedAt = fetched.fetchedAt;
     } catch (error) {
       rawText = `No se pudo descargar la URL ${input.url}. Error: ${(error as Error).message}`;
       title = title ?? "Fuente no disponible";
@@ -274,9 +292,9 @@ export async function analyzeNewsSource(input: NewsSourceInput, symbol?: string)
     source: String(provider),
     url: input.url ?? "",
     symbols: [safeSymbol],
-    createdAt: input.publishedAt ?? new Date().toISOString()
+    createdAt: publishedAt
   }]);
-  const credibilityScore = credibilityFor(input, cleanText);
+  const credibilityScore = credibilityFor({ ...input, provider }, cleanText);
   const sentimentScore = Number((sentiment.score).toFixed(3));
   const confidenceScore = Number(Math.max(0, Math.min(1, sentiment.confidence)).toFixed(3));
   const weightedConfidence = Number((confidenceScore * credibilityScore).toFixed(3));
@@ -290,7 +308,7 @@ export async function analyzeNewsSource(input: NewsSourceInput, symbol?: string)
     title: title ?? summarize(cleanText).slice(0, 90),
     url: input.url,
     provider: String(provider),
-    publishedAt: input.publishedAt ?? new Date().toISOString(),
+    publishedAt,
     summary: summarize(cleanText),
     rawText: cleanText.slice(0, 5000),
     sentiment: sentimentToNews(sentiment),
@@ -349,7 +367,7 @@ export function extractTitle(html: string): string {
 
 // FIC: Strip scripts/styles/tags and collapse whitespace, capped at maxChars.
 // FIC: Elimina scripts/styles/etiquetas y colapsa espacios, acotado a maxChars.
-export function extractRelevantContent(html: string, maxChars = 5000): string {
+export function extractRelevantContent(html: string, maxChars = 5000, symbol?: string): string {
   const withoutScripts = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -357,7 +375,51 @@ export function extractRelevantContent(html: string, maxChars = 5000): string {
   const text = decodeEntities(withoutScripts.replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
-  return text.slice(0, maxChars);
+  if (!symbol) return text.slice(0, maxChars);
+
+  const relevant = extractTickerRelevantText(text, symbol, maxChars);
+  return relevant || `No se encontro contenido dentro de la pagina que mencione directamente ${symbol.toUpperCase()}. Texto base: ${text.slice(0, Math.min(maxChars, 900))}`;
+}
+
+function extractTickerRelevantText(text: string, symbol: string, maxChars: number): string {
+  const clean = normalizeWhitespace(text);
+  const terms = tickerTerms(symbol);
+  const chunks = clean
+    .split(/(?<=[.!?])\s+|\s{2,}|\n+/)
+    .map((chunk) => chunk.trim())
+    .filter((chunk) => chunk.length >= 40);
+  const matches: string[] = [];
+
+  chunks.forEach((chunk, index) => {
+    if (!mentionsAny(chunk, terms)) return;
+    const before = chunks[index - 1];
+    const after = chunks[index + 1];
+    if (before && !matches.includes(before)) matches.push(before);
+    if (!matches.includes(chunk)) matches.push(chunk);
+    if (after && !matches.includes(after)) matches.push(after);
+  });
+
+  const relevant = normalizeWhitespace(matches.join(" "));
+  return relevant.slice(0, maxChars);
+}
+
+function tickerTerms(symbol: string): string[] {
+  const safeSymbol = symbol.toUpperCase();
+  return [safeSymbol, ...(SYMBOL_ALIASES[safeSymbol] ?? [])].map((term) => term.toLowerCase());
+}
+
+function mentionsAny(text: string, terms: string[]): boolean {
+  const normalized = text.toLowerCase();
+  return terms.some((term) => {
+    if (term.length <= 5 && /^[a-z0-9.]+$/i.test(term)) {
+      return new RegExp(`\\b${escapeRegExp(term)}\\b`, "i").test(normalized);
+    }
+    return normalized.includes(term);
+  });
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function decodeEntities(s: string): string {
